@@ -17,7 +17,7 @@ io.on('connection', function(socket){
 
 	var currentPlayer = {};
 	currentPlayer.name = 'unknown';
-
+	console.log('Someone connected');
 	socket.on('player connect', function(){
 		console.log(currentPlayer.name+ ' recv: player connect');
 		for(var i=0; i<clients.length;i++){
@@ -79,10 +79,28 @@ io.on('connection', function(socket){
 		socket.broadcast.emit('other player connected', currentPlayer);
 	});
 
-	socket.on('player move', function(data){
+	socket.on('player move safe', function(data){
 		console.log('recv: move: ' + JSON.stringify(data));
 		currentPlayer.position = data.position;
+		//{name:, positionx, y, z}
 		socket.broadcast.emit('player move', currentPlayer);
+	});
+
+	socket.on('player move', function(data){
+		console.log('recv: move: ' + JSON.stringify(data));
+		clientChanged = null;
+		//currentPlayer.position = data.position;
+		for (var i = 0; i < clients.length; i++) {
+			if(data.name == clients[i].name){
+				clients[i].position = data.position;
+				clientChanged = clients[i];
+				break;
+			}
+		}
+		//{name:, positionx, y, z}
+		if(clientChanged!=null){
+			socket.broadcast.emit('player move', clientChanged);
+		}
 	});
 
 	socket.on('player turn', function(data){
@@ -144,6 +162,9 @@ io.on('connection', function(socket){
 				clients.splice(i,1);
 			}
 		}
+	});
+	socket.on('say hi', function(){
+		console.log('hi');
 	});
 });
 
