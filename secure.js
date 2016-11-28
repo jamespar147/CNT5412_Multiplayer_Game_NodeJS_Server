@@ -126,10 +126,10 @@ io.on('connection', function(socket){
 		var md5sum = crypto.createHash('md5').update(jsonData).digest("hex").toUpperCase();
 		//console.log('md5sum:' + md5sum);
 		//console.log('decrypted signature:' + decryptedSignature);
-		// if(md5sum != decryptedSignature){
-		// 	//Signature doesn't match
-		// 	return;
-		// }
+		if(md5sum != decryptedSignature){
+			//Signature doesn't match
+			return;
+		}
 		//Signature verification END
 
 		clientChanged = null;
@@ -143,7 +143,7 @@ io.on('connection', function(socket){
 		}
 		//{name:, positionx, y, z}
 		if(clientChanged!=null){
-			console.log('Broadcast')
+			//console.log('Broadcast')
 			socket.broadcast.emit('player move', clientChanged);
 		}
 	});
