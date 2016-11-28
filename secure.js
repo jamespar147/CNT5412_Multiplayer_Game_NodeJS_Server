@@ -112,6 +112,18 @@ io.on('connection', function(socket){
 
 	socket.on('player move', function(data){
 		console.log('recv: move: ' + JSON.stringify(data));
+		//////////////////publicKey:data.publicKey
+		var buf = Buffer.from(data.nonce, 'base64');
+		//console.log("----------");
+		//console.log(data.publicKey);
+		//console.log("----------");
+		var nonce_buf = crypto.privateDecrypt({"key":pemKey, "padding":crypto.constants.RSA_NO_PADDING}, buf);
+		//publicKey = privateKey.decrypt(buf);
+
+		var nonce = nonce_buf.toString().replace(/\0/g, '');
+		console.log("Nonce:"+ nonce);
+
+
 
 		//Signature verification BEGIN
 		//var signature = data.signature;
@@ -123,9 +135,9 @@ io.on('connection', function(socket){
 		//console.log(json.name +'->' + playerPublicKey);
 		var decryptedSignature = crypto.publicDecrypt({"key":playerPublicKey, "padding":crypto.constants.RSA_NO_PADDING}, buf).toString('utf8').trim().replace(/\0/g, '');
 		var jsonData = data.json
-		var md5sum = crypto.createHash('md5').update(jsonData).digest("hex").toUpperCase();
-		//console.log('md5sum:' + md5sum);
-		//console.log('decrypted signature:' + decryptedSignature);
+		var md5sum = crypto.createHash('md5').update(jsonData+nonce).digest("hex").toUpperCase();
+		console.log('md5sum:' + md5sum);
+		console.log('decrypted signature:' + decryptedSignature);
 		if(md5sum != decryptedSignature){
 			//Signature doesn't match
 			return;
