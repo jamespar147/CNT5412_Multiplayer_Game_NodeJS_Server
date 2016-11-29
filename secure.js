@@ -26,6 +26,30 @@ io.on('connection', function(socket){
 
 	var currentPlayer = {};
 	currentPlayer.name = 'unknown';
+	socket.on('check username', function(data){
+		console.log('recv: check username:' + data.username);
+		if(clients.length==0){
+			rep = {
+				reply : "yes"
+			};
+			socket.emit('can login', rep);
+			return;
+		}
+		for(i = 0; i<clients.length; i++){
+			if(clients[i].name == data.username){
+				rep = {
+					reply : "no"
+				};
+				socket.emit('can login', rep);
+				return;		
+			}
+		}
+		rep = {
+				reply : "yes"
+			};
+		socket.emit('can login', rep);
+	})
+
 	socket.on('player connect', function(){
 		console.log(currentPlayer.name+ ' recv: player connect');
 		for(var i=0; i<clients.length;i++){
@@ -117,9 +141,12 @@ io.on('connection', function(socket){
 	socket.on('player move', function(data){
 		console.log('recv: move: ' + JSON.stringify(data));
 
-		//Signature verification BEGIN
-
 		var json = JSON.parse(data.json);
+		//Signature verification BEGIN
+		if(clientKeys[json.name] === "undefined"){
+			console.log('User does not exist');
+			return;
+		}
 		clientNonces[json.name] = (clientNonces[json.name] + 1)%10000;
 		nonce = clientNonces[json.name].toString();
 

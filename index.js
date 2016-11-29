@@ -1,6 +1,10 @@
 var app = require('express')();
 var server = require('http').Server(app);
 var io = require('socket.io')(server);
+var crypto = require('crypto');
+var fs = require('fs');
+var NodeRSA = require('node-rsa');
+var path = require('path');
 
 server.listen(3000);
 
@@ -8,16 +12,44 @@ server.listen(3000);
 var enemies = [];
 var playerSpawnPoints = [];
 var clients = [];
+var clientKeys = {};
+var clientNonces = {};
+var pemKey = ''; //This is the private server key
+var privateKeyPath = path.join(__dirname, 'private_key.txt');
 
-app.get('/', function(res, res){
-	res.send('hey you got back get "/"');
-});
+
+pemKey = fs.readFileSync(privateKeyPath, 'utf8');
+
+var privateKey = new NodeRSA(pemKey);
 
 io.on('connection', function(socket){
 
 	var currentPlayer = {};
 	currentPlayer.name = 'unknown';
-	console.log('Someone connected');
+	socket.on('check username', function(data){
+		console.log('recv: check username:' + data.username);
+		if(clients.length==0){
+			rep = {
+				reply : "yes"
+			};
+			socket.emit('can login', rep);
+			return;
+		}
+		for(i = 0; i<clients.length; i++){
+			if(clients[i].name == data.username){
+				rep = {
+					reply : "no"
+				};
+				socket.emit('can login', rep);
+				return;		
+			}
+		}
+		rep = {
+				reply : "yes"
+			};
+		socket.emit('can login', rep);
+	})
+
 	socket.on('player connect', function(){
 		console.log(currentPlayer.name+ ' recv: player connect');
 		for(var i=0; i<clients.length;i++){
@@ -71,6 +103,26 @@ io.on('connection', function(socket){
 			rotation: randomSpawnPoint.rotation,
 			health: 100
 		};
+
+
+		var buf = Buffer.from(data.publicKey, 'base64');
+		var publicKey = crypto.privateDecrypt({"key":pemKey, "padding":crypto.constants.RSA_NO_PADDING}, buf);
+
+
+		var playerPublicKey = publicKey.toString().substring(publicKey.toString().indexOf('-----BEGIN'));
+		clientKeys[currentPlayer.name] = playerPublicKey;
+
+		//Decrypting with server private Key
+		var noncebuf = Buffer.from(data.nonce, 'base64');
+		var noncebufDecrypted = crypto.privateDecrypt({"key":pemKey, "padding":crypto.constants.RSA_NO_PADDING}, noncebuf).toString('utf8').replace(/\0/g, '');
+		
+		//Decrypting with user public key
+		nonceBuf = Buffer.from(noncebufDecrypted, 'base64');
+		var decryptednonce = crypto.publicDecrypt({"key":playerPublicKey, "padding":crypto.constants.RSA_NO_PADDING}, nonceBuf).toString('utf8').trim().replace(/\0/g, '');
+		
+		clientNonces[currentPlayer.name] = parseInt(decryptednonce);
+		//console.log("Client public key:\n" + publicKey)
+		/////////////////////////////
 		clients.push(currentPlayer);
 		// in your current game, tell you that you have joined
 		console.log(currentPlayer.name+' emit: play: ' + JSON.stringify(currentPlayer));
@@ -88,16 +140,37 @@ io.on('connection', function(socket){
 
 	socket.on('player move', function(data){
 		console.log('recv: move: ' + JSON.stringify(data));
+
+		var json = JSON.parse(data.json);
+		//Signature verification BEGIN
+		if(clientKeys[json.name] === "undefined"){
+			console.log('User does not exist');
+			return;
+		}
+		clientNonces[json.name] = (clientNonces[json.name] + 1)%10000;
+		nonce = clientNonces[json.name].toString();
+
+		var buf = Buffer.from(data.signature, 'base64');
+		
+		var playerPublicKey = clientKeys[json.name];
+		var decryptedSignature = crypto.publicDecrypt({"key":playerPublicKey, "padding":crypto.constants.RSA_NO_PADDING}, buf).toString('utf8').trim().replace(/\0/g, '');
+		var jsonData = data.json
+		var md5sum = crypto.createHash('md5').update(jsonData+nonce).digest("hex").toUpperCase();
+		
+		// if(md5sum != decryptedSignature){
+		// 	console.log('Dropped message');
+		// 	return;
+		// }
+		//Signature verification END
+
 		clientChanged = null;
-		//currentPlayer.position = data.position;
 		for (var i = 0; i < clients.length; i++) {
-			if(data.name == clients[i].name){
-				clients[i].position = data.position;
+			if(json.name == clients[i].name){
+				clients[i].position = json.position;
 				clientChanged = clients[i];
 				break;
 			}
 		}
-		//{name:, positionx, y, z}
 		if(clientChanged!=null){
 			socket.broadcast.emit('player move', clientChanged);
 		}
@@ -162,9 +235,6 @@ io.on('connection', function(socket){
 				clients.splice(i,1);
 			}
 		}
-	});
-	socket.on('say hi', function(){
-		console.log('hi');
 	});
 });
 
