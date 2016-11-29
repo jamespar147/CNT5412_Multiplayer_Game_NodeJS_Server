@@ -13,20 +13,19 @@ var enemies = [];
 var playerSpawnPoints = [];
 var clients = [];
 var clientKeys = {};
+var clientNonces = {};
 var pemKey = ''; //This is the private server key
 var privateKeyPath = path.join(__dirname, 'private_key.txt');
-//console.log(privateKeyPath);
+
 
 pemKey = fs.readFileSync(privateKeyPath, 'utf8');
 
-//console.log('pemKey:' + pemKey);
 var privateKey = new NodeRSA(pemKey);
 
 io.on('connection', function(socket){
 
 	var currentPlayer = {};
 	currentPlayer.name = 'unknown';
-	console.log('Someone connected');
 	socket.on('player connect', function(){
 		console.log(currentPlayer.name+ ' recv: player connect');
 		for(var i=0; i<clients.length;i++){
@@ -82,18 +81,23 @@ io.on('connection', function(socket){
 		};
 
 
-		//////////////////publicKey:data.publicKey
 		var buf = Buffer.from(data.publicKey, 'base64');
-		//console.log("----------");
-		//console.log(data.publicKey);
-		//console.log("----------");
 		var publicKey = crypto.privateDecrypt({"key":pemKey, "padding":crypto.constants.RSA_NO_PADDING}, buf);
-		//publicKey = privateKey.decrypt(buf);
+
 
 		var playerPublicKey = publicKey.toString().substring(publicKey.toString().indexOf('-----BEGIN'));
-		console.log(currentPlayer.name + '->' + playerPublicKey);
 		clientKeys[currentPlayer.name] = playerPublicKey;
-		//console.log("Client public key:\n" + publicKey);
+
+		//Decrypting with server private Key
+		var noncebuf = Buffer.from(data.nonce, 'base64');
+		var noncebufDecrypted = crypto.privateDecrypt({"key":pemKey, "padding":crypto.constants.RSA_NO_PADDING}, noncebuf).toString('utf8').replace(/\0/g, '');
+		
+		//Decrypting with user public key
+		nonceBuf = Buffer.from(noncebufDecrypted, 'base64');
+		var decryptednonce = crypto.publicDecrypt({"key":playerPublicKey, "padding":crypto.constants.RSA_NO_PADDING}, nonceBuf).toString('utf8').trim().replace(/\0/g, '');
+		
+		clientNonces[currentPlayer.name] = parseInt(decryptednonce);
+		//console.log("Client public key:\n" + publicKey)
 		/////////////////////////////
 		clients.push(currentPlayer);
 		// in your current game, tell you that you have joined
@@ -112,40 +116,27 @@ io.on('connection', function(socket){
 
 	socket.on('player move', function(data){
 		console.log('recv: move: ' + JSON.stringify(data));
-		//////////////////publicKey:data.publicKey
-		var buf = Buffer.from(data.nonce, 'base64');
-		//console.log("----------");
-		//console.log(data.publicKey);
-		//console.log("----------");
-		var nonce_buf = crypto.privateDecrypt({"key":pemKey, "padding":crypto.constants.RSA_NO_PADDING}, buf);
-		//publicKey = privateKey.decrypt(buf);
-
-		var nonce = nonce_buf.toString().replace(/\0/g, '');
-		console.log("Nonce:"+ nonce);
-
-
 
 		//Signature verification BEGIN
-		//var signature = data.signature;
-		//console.log('playerPublicKey:' + playerPublicKey.toString().trim());
-		var buf = Buffer.from(data.signature, 'base64');
-		//console.log('data.signature:'+data.signature);
+
 		var json = JSON.parse(data.json);
+		clientNonces[json.name] = (clientNonces[json.name] + 1)%10000;
+		nonce = clientNonces[json.name].toString();
+
+		var buf = Buffer.from(data.signature, 'base64');
+		
 		var playerPublicKey = clientKeys[json.name];
-		//console.log(json.name +'->' + playerPublicKey);
 		var decryptedSignature = crypto.publicDecrypt({"key":playerPublicKey, "padding":crypto.constants.RSA_NO_PADDING}, buf).toString('utf8').trim().replace(/\0/g, '');
 		var jsonData = data.json
 		var md5sum = crypto.createHash('md5').update(jsonData+nonce).digest("hex").toUpperCase();
-		console.log('md5sum:' + md5sum);
-		console.log('decrypted signature:' + decryptedSignature);
+		
 		if(md5sum != decryptedSignature){
-			//Signature doesn't match
+			console.log('Dropped message');
 			return;
 		}
 		//Signature verification END
 
 		clientChanged = null;
-		//currentPlayer.position = data.position;
 		for (var i = 0; i < clients.length; i++) {
 			if(json.name == clients[i].name){
 				clients[i].position = json.position;
@@ -153,9 +144,7 @@ io.on('connection', function(socket){
 				break;
 			}
 		}
-		//{name:, positionx, y, z}
 		if(clientChanged!=null){
-			//console.log('Broadcast')
 			socket.broadcast.emit('player move', clientChanged);
 		}
 	});
