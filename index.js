@@ -143,7 +143,7 @@ io.on('connection', function(socket){
 
 		var json = JSON.parse(data.json);
 		//Signature verification BEGIN
-		if(clientKeys[json.name] === "undefined"){
+		if(clientKeys[json.name] === "undefined" || clientKeys[json.name] == null){
 			console.log('User does not exist');
 			return;
 		}
