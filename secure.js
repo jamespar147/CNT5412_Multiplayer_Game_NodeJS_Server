@@ -132,14 +132,14 @@ io.on('connection', function(socket){
 	});
 
 	socket.on('player move safe', function(data){
-		console.log('recv: move: ' + JSON.stringify(data));
+		//console.log('recv: move: ' + JSON.stringify(data));
 		currentPlayer.position = data.position;
 		//{name:, positionx, y, z}
 		socket.broadcast.emit('player move', currentPlayer);
 	});
 
 	socket.on('player move', function(data){
-		console.log('recv: move: ' + JSON.stringify(data));
+		//console.log('recv: move: ' + JSON.stringify(data));
 
 		var json = JSON.parse(data.json);
 		//Signature verification BEGIN
@@ -177,23 +177,23 @@ io.on('connection', function(socket){
 	});
 
 	socket.on('player turn', function(data){
-		console.log('recv: move: ' + JSON.stringify(data));
+		//console.log('recv: move: ' + JSON.stringify(data));
 		currentPlayer.rotation = data.rotation;
 		socket.broadcast.emit('player turn', currentPlayer);
 	});
 
 	socket.on('player shoot', function(){
-		console.log(currentPlayer.name + ' recv: shoot');
+		//console.log(currentPlayer.name + ' recv: shoot');
 		var data = {
 			name: currentPlayer.name
 		};
-		console.log(currentPlayer.name + ' bcst: shoot: ' + JSON.stringify(data));
+		//console.log(currentPlayer.name + ' bcst: shoot: ' + JSON.stringify(data));
 		socket.emit('player shoot', data);
 		socket.broadcast.emit('player shoot', data);
 	});
 
 	socket.on('health', function(data){
-		console.log(currentPlayer.name+ ' recv: health: ' + JSON.stringify(data));
+		//console.log(currentPlayer.name+ ' recv: health: ' + JSON.stringify(data));
 		//only change the health once, we can do this by checking the originating player
 		if(data.from === currentPlayer.name){
 			var indexDamaged = 0;
@@ -220,13 +220,13 @@ io.on('connection', function(socket){
 				name: (!data.isEnemy) ? clients[indexDamaged].name : enemies[indexDamaged].name,
 				health: (!data.isEnemy) ? clients[indexDamaged].health : enemies[indexDamaged].health
 			};
-			console.log(currentPlayer.name + ' bcst: health: ' + JSON.stringify(response));
+			//console.log(currentPlayer.name + ' bcst: health: ' + JSON.stringify(response));
 			socket.emit('health', response);
 			socket.broadcast.emit('health', response);
 		}
 	});
 	socket.on('restoreHealth', function(){
-		console.log(' Restoring health ');
+		//console.log(' Restoring health ');
 		currentPlayer.health = 100;
 		var response = {
 				name: currentPlayer.name,
