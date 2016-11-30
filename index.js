@@ -187,7 +187,7 @@ io.on('connection', function(socket){
 		var data = {
 			name: currentPlayer.name
 		};
-		console.log(currentPlayer.name + ' bcst: shoot: ' + JSON.stringify(data));
+		//console.log(currentPlayer.name + ' bcst: shoot: ' + JSON.stringify(data));
 		socket.emit('player shoot', data);
 		socket.broadcast.emit('player shoot', data);
 	});
@@ -220,7 +220,7 @@ io.on('connection', function(socket){
 				name: (!data.isEnemy) ? clients[indexDamaged].name : enemies[indexDamaged].name,
 				health: (!data.isEnemy) ? clients[indexDamaged].health : enemies[indexDamaged].health
 			};
-			console.log(currentPlayer.name + ' bcst: health: ' + JSON.stringify(response));
+			//console.log(currentPlayer.name + ' bcst: health: ' + JSON.stringify(response));
 			socket.emit('health', response);
 			socket.broadcast.emit('health', response);
 		}
