@@ -225,6 +225,16 @@ io.on('connection', function(socket){
 			socket.broadcast.emit('health', response);
 		}
 	});
+	socket.on('restoreHealth', function(){
+		console.log(' Restoring health ');
+		currentPlayer.health = 100;
+		var response = {
+				name: currentPlayer.name,
+				health: 100
+			};
+		socket.emit('health', response);
+		socket.broadcast.emit('health', response);
+	});
 
 	socket.on('disconnect', function(){
 		console.log(currentPlayer.name+ ' recv: disconnect ' + currentPlayer.name);
