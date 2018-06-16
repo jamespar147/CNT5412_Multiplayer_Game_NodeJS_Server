@@ -1,15 +1,17 @@
 {
-  "name": "nodegameserver",
+  "name": "FullMetalPacket_Server",
   "version": "1.0.0",
-  "description": "",
+  "description": "Encrypted Multiplayer Video Game",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "author": "James Parsons & Manuel Hernandez",
   "license": "ISC",
+  "repository": "https://github.com/jwparsons/FullMetalPacket_Server",
   "dependencies": {
     "express": "^4.14.0",
+    "node-rsa": "^1.0.0",
     "socket.io": "^1.6.0"
   }
 }
