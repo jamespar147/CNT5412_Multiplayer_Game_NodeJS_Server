@@ -9,7 +9,7 @@ You can also take a look at the [source code](https://github.com/jwparsons/FullM
 
 
 ## Requirements
-* Running the server requires[NodeJS](https://nodejs.org/en/).
+* Running the server requires [NodeJS](https://nodejs.org/en/).
 
 
 ## Instructions
